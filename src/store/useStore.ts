@@ -284,11 +284,11 @@ export const useStore = create<BrainTwinState>()(
             createdAt: serverTimestamp()
           });
           
-          batch.update(doc(db, 'users', user.uid), { streak: newStreak });
+          batch.set(doc(db, 'users', user.uid), { streak: newStreak }, { merge: true });
           
           // Reset goals
           state.goals.forEach(g => {
-            batch.update(doc(db, 'users', user.uid, 'goals', g.id), { completed: false });
+            batch.set(doc(db, 'users', user.uid, 'goals', g.id), { completed: false }, { merge: true });
           });
           
           // Reset metrics
@@ -315,7 +315,7 @@ export const useStore = create<BrainTwinState>()(
         if (user) {
           const batch = writeBatch(db);
           get().goals.forEach(g => {
-            batch.update(doc(db, 'users', user.uid, 'goals', g.id), { completed: false });
+            batch.set(doc(db, 'users', user.uid, 'goals', g.id), { completed: false }, { merge: true });
           });
           batch.set(doc(db, 'users', user.uid, 'metrics', 'today'), {
             ...INITIAL_METRICS,
