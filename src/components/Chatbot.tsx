@@ -70,7 +70,7 @@ export function Chatbot() {
       <button
         onClick={() => setIsOpen(true)}
         className={cn(
-          "fixed bottom-6 right-6 w-[57px] h-[57px] bg-primary text-background rounded-full flex items-center justify-center shadow-lg hover:shadow-primary/50 transition-all z-40",
+          "fixed bottom-6 right-6 w-[57px] h-[57px] bg-primary text-background rounded-full flex items-center justify-center shadow-lg hover:shadow-[0_0_24px_rgba(212,175,55,0.5)] transition-all z-40",
           isOpen ? "scale-0 opacity-0" : "scale-100 opacity-100"
         )}
       >
@@ -89,7 +89,7 @@ export function Chatbot() {
             {/* Header */}
             <div className="pt-[15px] pb-4 pl-[16px] pr-[10px] ml-0 border-b border-border bg-surface-hover flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                <div className="w-8 h-8 rounded-full bg-[rgba(212,175,55,0.2)] flex items-center justify-center text-primary">
                   <Bot className="w-5 h-5" />
                 </div>
                 <div>
@@ -117,7 +117,7 @@ export function Chatbot() {
                 >
                   <div className={cn(
                     "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
-                    msg.role === 'user' ? "bg-surface-hover text-text-main" : "bg-primary/20 text-primary"
+                    msg.role === 'user' ? "bg-surface-hover text-text-main" : "bg-[rgba(212,175,55,0.2)] text-primary"
                   )}>
                     {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                   </div>
@@ -133,7 +133,7 @@ export function Chatbot() {
               ))}
               {isLoading && (
                 <div className="flex gap-3 max-w-[85%]">
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-[rgba(212,175,55,0.2)] flex items-center justify-center text-primary flex-shrink-0">
                     <Bot className="w-4 h-4" />
                   </div>
                   <div className="p-4 rounded-2xl bg-surface-hover rounded-tl-none flex gap-1 items-center">

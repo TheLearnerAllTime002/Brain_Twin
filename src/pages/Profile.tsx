@@ -103,7 +103,7 @@ export function Profile() {
       <div className="bg-surface p-8 rounded-2xl border border-border">
         <div className="flex flex-col items-center mb-8">
           <div className="relative group">
-            <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-surface-hover bg-primary/20 flex items-center justify-center">
+            <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-surface-hover bg-[rgba(212,175,55,0.2)] flex items-center justify-center">
               {photoURL ? (
                 <img src={photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               ) : (
@@ -142,7 +142,7 @@ export function Profile() {
           {message && (
             <div className={cn(
               "p-4 rounded-xl text-sm",
-              message.includes('Failed') ? "bg-danger/10 text-danger" : "bg-success/10 text-success"
+              message.includes('Failed') ? "bg-[rgba(239,68,68,0.1)] text-danger" : "bg-[rgba(34,197,94,0.1)] text-success"
             )}>
               {message}
             </div>

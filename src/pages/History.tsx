@@ -25,9 +25,9 @@ export function History() {
 
   const getScoreColor = (score: number) => {
     if (score === 0) return 'bg-surface-hover';
-    if (score < 40) return 'bg-danger/40';
-    if (score < 60) return 'bg-warning/40';
-    if (score < 80) return 'bg-primary/60';
+    if (score < 40) return 'bg-[rgba(239,68,68,0.4)]';
+    if (score < 60) return 'bg-[rgba(245,158,11,0.4)]';
+    if (score < 80) return 'bg-[rgba(212,175,55,0.6)]';
     return 'bg-primary';
   };
 
@@ -65,9 +65,9 @@ export function History() {
           <span>Less</span>
           <div className="flex gap-1">
             <div className="w-3 h-3 rounded-sm bg-surface-hover" />
-            <div className="w-3 h-3 rounded-sm bg-danger/40" />
-            <div className="w-3 h-3 rounded-sm bg-warning/40" />
-            <div className="w-3 h-3 rounded-sm bg-primary/60" />
+            <div className="w-3 h-3 rounded-sm bg-[rgba(239,68,68,0.4)]" />
+            <div className="w-3 h-3 rounded-sm bg-[rgba(245,158,11,0.4)]" />
+            <div className="w-3 h-3 rounded-sm bg-[rgba(212,175,55,0.6)]" />
             <div className="w-3 h-3 rounded-sm bg-primary" />
           </div>
           <span>More</span>
@@ -106,8 +106,8 @@ export function History() {
                     
                     <div className={cn(
                       "w-10 h-10 rounded-full flex items-center justify-center",
-                      trend === 'up' ? "bg-success/10 text-success" :
-                      trend === 'down' ? "bg-danger/10 text-danger" :
+                      trend === 'up' ? "bg-[rgba(34,197,94,0.1)] text-success" :
+                      trend === 'down' ? "bg-[rgba(239,68,68,0.1)] text-danger" :
                       "bg-surface-hover text-text-muted"
                     )}>
                       {trend === 'up' && <TrendingUp className="w-5 h-5" />}

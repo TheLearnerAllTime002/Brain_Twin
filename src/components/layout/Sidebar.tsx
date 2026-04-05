@@ -45,7 +45,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
     <aside className="w-64 h-screen bg-surface border-r border-border flex flex-col">
       <div className="p-6 flex items-center justify-between">
         <h1 className="text-2xl font-display font-bold text-primary flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-[rgba(212,175,55,0.2)] flex items-center justify-center">
             <div className="w-4 h-4 bg-primary rounded-full animate-pulse" />
           </div>
           Brain Twin
@@ -70,7 +70,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group",
                 isActive 
-                  ? "bg-primary/10 text-primary font-medium" 
+                  ? "bg-[rgba(212,175,55,0.1)] text-primary font-medium" 
                   : "text-text-muted hover:bg-surface-hover hover:text-text-main"
               )}
             >
@@ -100,7 +100,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
               {user.photoURL ? (
                 <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+                <div className="w-8 h-8 rounded-full bg-[rgba(212,175,55,0.2)] flex items-center justify-center text-primary font-bold">
                   {user.displayName?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}
                 </div>
               )}

@@ -127,7 +127,7 @@ export const useStore = create<BrainTwinState>()(
           setDoc(doc(db, 'users', user.uid, 'goals', id), {
             title: newGoal.title,
             priority: newGoal.priority,
-            category: newGoal.category,
+            category: newGoal.category ?? 'personal',
             completed: newGoal.completed,
             createdAt: serverTimestamp()
           });

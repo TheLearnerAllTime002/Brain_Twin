@@ -27,10 +27,10 @@ export function Rewards() {
 
       {/* Level System */}
       <section className="bg-surface p-8 rounded-2xl border border-border relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[rgba(212,175,55,0.05)] rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
         
         <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
-          <div className="w-32 h-32 rounded-full border-4 border-primary/20 flex items-center justify-center relative">
+          <div className="w-32 h-32 rounded-full border-4 border-[rgba(212,175,55,0.2)] flex items-center justify-center relative">
             <div className="absolute inset-0 rounded-full border-4 border-primary" style={{ clipPath: `polygon(0 0, 100% 0, 100% ${progress}%, 0 ${progress}%)` }} />
             <div className="text-center">
               <span className="block text-sm text-text-muted uppercase tracking-widest">Level</span>
@@ -74,7 +74,7 @@ export function Rewards() {
                 className={cn(
                   "p-6 rounded-2xl border transition-all relative overflow-hidden group",
                   badge.unlocked 
-                    ? "bg-surface border-primary/30 hover:border-primary/60" 
+                    ? "bg-surface border-[rgba(212,175,55,0.3)] hover:border-[rgba(212,175,55,0.6)]" 
                     : "bg-background border-border opacity-60 grayscale"
                 )}
               >
@@ -86,7 +86,7 @@ export function Rewards() {
                 
                 <div className={cn(
                   "w-12 h-12 rounded-xl flex items-center justify-center mb-4",
-                  badge.unlocked ? "bg-primary/20 text-primary" : "bg-surface-hover text-text-muted"
+                  badge.unlocked ? "bg-[rgba(212,175,55,0.2)] text-primary" : "bg-surface-hover text-text-muted"
                 )}>
                   <Icon className="w-6 h-6" />
                 </div>
@@ -95,7 +95,7 @@ export function Rewards() {
                 <p className="text-xs text-text-muted leading-relaxed">{badge.description}</p>
                 
                 {badge.unlocked && badge.unlockedAt && (
-                  <p className="text-[10px] text-primary/60 mt-4 uppercase tracking-wider">
+                  <p className="text-[10px] text-[rgba(212,175,55,0.6)] mt-4 uppercase tracking-wider">
                     Unlocked {badge.unlockedAt}
                   </p>
                 )}

@@ -21,7 +21,11 @@
 
 @layer base {
   body {
-    @apply bg-background text-text-main font-sans antialiased selection:bg-primary/30;
+    @apply bg-background text-text-main font-sans antialiased;
+  }
+
+  ::selection {
+    background: rgba(212, 175, 55, 0.3);
   }
   
   h1, h2, h3, h4, h5, h6 {

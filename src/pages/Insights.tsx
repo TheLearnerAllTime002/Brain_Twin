@@ -95,19 +95,19 @@ export function Insights() {
               transition={{ delay: index * 0.1 }}
               className={cn(
                 "p-6 rounded-2xl border",
-                insight.type === 'warning' ? "bg-warning/5 border-warning/20" :
-                insight.type === 'success' ? "bg-success/5 border-success/20" :
-                insight.type === 'improvement' ? "bg-danger/5 border-danger/20" :
+                insight.type === 'warning' ? "bg-[rgba(245,158,11,0.05)] border-[rgba(245,158,11,0.2)]" :
+                insight.type === 'success' ? "bg-[rgba(34,197,94,0.05)] border-[rgba(34,197,94,0.2)]" :
+                insight.type === 'improvement' ? "bg-[rgba(239,68,68,0.05)] border-[rgba(239,68,68,0.2)]" :
                 "bg-surface border-border"
               )}
             >
               <div className="flex items-start gap-4">
                 <div className={cn(
                   "p-3 rounded-xl",
-                  insight.type === 'warning' ? "bg-warning/20 text-warning" :
-                  insight.type === 'success' ? "bg-success/20 text-success" :
-                  insight.type === 'improvement' ? "bg-danger/20 text-danger" :
-                  "bg-primary/20 text-primary"
+                  insight.type === 'warning' ? "bg-[rgba(245,158,11,0.2)] text-warning" :
+                  insight.type === 'success' ? "bg-[rgba(34,197,94,0.2)] text-success" :
+                  insight.type === 'improvement' ? "bg-[rgba(239,68,68,0.2)] text-danger" :
+                  "bg-[rgba(212,175,55,0.2)] text-primary"
                 )}>
                   <Icon className="w-6 h-6" />
                 </div>

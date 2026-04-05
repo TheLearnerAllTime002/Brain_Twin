@@ -19,7 +19,7 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   const quote = QUOTES[parseInt(dayOfYear) % QUOTES.length];
 
   return (
-    <header className="h-20 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-10 flex items-center justify-between px-4 md:px-6 lg:px-8">
+    <header className="h-20 border-b border-border bg-[rgba(11,11,15,0.8)] backdrop-blur-md sticky top-0 z-10 flex items-center justify-between px-4 md:px-6 lg:px-8">
       <div className="flex items-center gap-3 md:gap-4">
         <button 
           onClick={onMenuClick}

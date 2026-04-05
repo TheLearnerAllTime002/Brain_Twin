@@ -1,59 +1,42 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot, setDoc, collection, getDocs, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useStore } from '../store/useStore';
 
 export function FirebaseSync() {
-  const { 
-    goals, metrics, xp, level, streak, history, 
-    addGoal, toggleGoal, deleteGoal, updateMetrics, endDay, resetDay, clearStore
-  } = useStore();
-
-  const [isInitialized, setIsInitialized] = useState(false);
+  const clearStore = useStore(state => state.clearStore);
 
   useEffect(() => {
+    let cleanupFirestoreListeners: (() => void) | undefined;
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      cleanupFirestoreListeners?.();
+      cleanupFirestoreListeners = undefined;
+
       if (user) {
-        // Sync user profile
         const userRef = doc(db, 'users', user.uid);
-        
-        // We use onSnapshot to listen to changes
-        const unsubProfile = onSnapshot(userRef, (docSnap) => {
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            useStore.setState({
-              xp: data.xp || 0,
-              level: data.level || 1,
-              streak: data.streak || 0,
-            });
-          } else {
-            // Create initial profile
-            setDoc(userRef, {
+        const metricsRef = doc(db, 'users', user.uid, 'metrics', 'today');
+
+        try {
+          const [userSnap, metricsSnap] = await Promise.all([
+            getDoc(userRef),
+            getDoc(metricsRef)
+          ]);
+
+          if (!userSnap.exists()) {
+            await setDoc(userRef, {
               uid: user.uid,
-              email: user.email,
+              email: user.email ?? '',
               xp: 0,
               level: 1,
               streak: 0,
               createdAt: serverTimestamp()
             });
           }
-        });
 
-        // Sync Goals
-        const goalsRef = collection(db, 'users', user.uid, 'goals');
-        const unsubGoals = onSnapshot(goalsRef, (snapshot) => {
-          const fetchedGoals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-          useStore.setState({ goals: fetchedGoals });
-        });
-
-        // Sync Metrics
-        const metricsRef = doc(db, 'users', user.uid, 'metrics', 'today');
-        const unsubMetrics = onSnapshot(metricsRef, (docSnap) => {
-          if (docSnap.exists()) {
-            useStore.setState({ metrics: docSnap.data() as any });
-          } else {
-            setDoc(metricsRef, {
+          if (!metricsSnap.exists()) {
+            await setDoc(metricsRef, {
               screenTime: 0,
               sleep: 0,
               procrastination: 0,
@@ -63,18 +46,44 @@ export function FirebaseSync() {
               updatedAt: serverTimestamp()
             });
           }
-        });
+        } catch (error) {
+          console.error('Error initializing Firestore user data', error);
+        }
 
-        // Sync History
+        const handleSnapshotError = (label: string) => (error: unknown) => {
+          console.error(`Error syncing ${label}`, error);
+        };
+
+        const unsubProfile = onSnapshot(userRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            useStore.setState({
+              xp: data.xp || 0,
+              level: data.level || 1,
+              streak: data.streak || 0,
+            });
+          }
+        }, handleSnapshotError('profile'));
+
+        const goalsRef = collection(db, 'users', user.uid, 'goals');
+        const unsubGoals = onSnapshot(goalsRef, (snapshot) => {
+          const fetchedGoals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+          useStore.setState({ goals: fetchedGoals });
+        }, handleSnapshotError('goals'));
+
+        const unsubMetrics = onSnapshot(metricsRef, (docSnap) => {
+          if (docSnap.exists()) {
+            useStore.setState({ metrics: docSnap.data() as any });
+          }
+        }, handleSnapshotError('metrics'));
+
         const historyRef = collection(db, 'users', user.uid, 'history');
         const unsubHistory = onSnapshot(historyRef, (snapshot) => {
           const fetchedHistory = snapshot.docs.map(doc => doc.data() as any);
           useStore.setState({ history: fetchedHistory });
-        });
+        }, handleSnapshotError('history'));
 
-        setIsInitialized(true);
-
-        return () => {
+        cleanupFirestoreListeners = () => {
           unsubProfile();
           unsubGoals();
           unsubMetrics();
@@ -82,12 +91,14 @@ export function FirebaseSync() {
         };
       } else {
         clearStore();
-        setIsInitialized(false);
       }
     });
 
-    return () => unsubscribe();
-  }, []);
+    return () => {
+      cleanupFirestoreListeners?.();
+      unsubscribe();
+    };
+  }, [clearStore]);
 
   return null;
 }

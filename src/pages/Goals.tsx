@@ -131,7 +131,7 @@ export function Goals() {
               "group flex items-center gap-4 p-4 rounded-xl border transition-all",
               goal.completed 
                 ? "bg-background border-border opacity-60" 
-                : "bg-surface border-border hover:border-primary/50"
+                : "bg-surface border-border hover:border-[#D4AF3780]"
             )}
           >
             <button 
@@ -151,9 +151,9 @@ export function Goals() {
               <div className="flex items-center gap-3 mt-1">
                 <span className={cn(
                   "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-sm",
-                  goal.priority === 'high' ? "bg-danger/10 text-danger" :
-                  goal.priority === 'medium' ? "bg-warning/10 text-warning" :
-                  "bg-success/10 text-success"
+                  goal.priority === 'high' ? "bg-[rgba(239,68,68,0.1)] text-danger" :
+                  goal.priority === 'medium' ? "bg-[rgba(245,158,11,0.1)] text-warning" :
+                  "bg-[rgba(34,197,94,0.1)] text-success"
                 )}>
                   {goal.priority}
                 </span>
@@ -163,7 +163,7 @@ export function Goals() {
             
             <button 
               onClick={() => deleteGoal(goal.id)}
-              className="p-2 text-text-muted hover:text-danger hover:bg-danger/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+              className="p-2 text-text-muted hover:text-danger hover:bg-[rgba(239,68,68,0.1)] rounded-lg opacity-0 group-hover:opacity-100 transition-all"
             >
               <Trash2 className="w-4 h-4" />
             </button>
