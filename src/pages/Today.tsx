@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { useStore } from '../store/useStore';
-import { Check, AlertCircle, Clock, Moon, Brain, Target, Zap, Download, Sparkles } from 'lucide-react';
+import { Check, AlertCircle, Clock, Moon, Brain, Target, Zap, Download, Sparkles, CheckCircle2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import html2canvas from 'html2canvas';
 import { format } from 'date-fns';
 
 export function Today() {
-  const { goals, toggleGoal, metrics, updateMetrics, getCurrentScore, level, streak } = useStore();
+  const { goals, toggleGoal, metrics, updateMetrics, getCurrentScore, hasCompletedToday, level, streak } = useStore();
   const score = getCurrentScore();
+  const completedToday = hasCompletedToday();
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState('');
 
@@ -89,49 +90,65 @@ export function Today() {
       <div className="order-2 lg:order-1 lg:col-span-2 space-y-8">
         
         {/* Goals Section */}
-        <section className="bg-surface rounded-2xl p-6 border border-border">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-display font-bold">Today's Goals</h3>
-            <span className="text-sm text-text-muted">{goals.filter(g => g.completed).length}/{goals.length} Completed</span>
-          </div>
-          
-          <div className="space-y-3">
-            {goals.map(goal => (
-              <div 
-                key={goal.id}
-                onClick={() => toggleGoal(goal.id)}
-                className={cn(
-                  "flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all",
-                  goal.completed 
-                    ? "bg-background border-border opacity-60" 
-                    : "bg-surface-hover border-border hover:border-[#D4AF3780]"
-                )}
-              >
-                <button className={cn(
-                  "w-6 h-6 rounded-full flex items-center justify-center transition-colors",
-                  goal.completed ? "bg-primary text-background" : "border-2 border-text-muted"
-                )}>
-                  {goal.completed && <Check className="w-4 h-4" />}
-                </button>
-                
-                <div className="flex-1">
-                  <p className={cn("font-medium transition-all", goal.completed && "line-through text-text-muted")}>
-                    {goal.title}
-                  </p>
-                </div>
-                
-                <div className={cn(
-                  "px-2.5 py-1 rounded-md text-xs font-medium uppercase tracking-wider",
-                  goal.priority === 'high' ? "bg-[rgba(239,68,68,0.1)] text-danger" :
-                  goal.priority === 'medium' ? "bg-[rgba(245,158,11,0.1)] text-warning" :
-                  "bg-[rgba(34,197,94,0.1)] text-success"
-                )}>
-                  {goal.priority}
-                </div>
+        {completedToday ? (
+          <section className="bg-surface rounded-2xl p-6 border border-border">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-[rgba(34,197,94,0.12)] text-success flex items-center justify-center flex-shrink-0">
+                <CheckCircle2 className="w-6 h-6" />
               </div>
-            ))}
-          </div>
-        </section>
+              <div>
+                <h3 className="text-xl font-display font-bold">Day Completed</h3>
+                <p className="text-text-muted mt-2">
+                  Today's goals are archived into your scorecard. Check the History page to review the completed day.
+                </p>
+              </div>
+            </div>
+          </section>
+        ) : (
+          <section className="bg-surface rounded-2xl p-6 border border-border">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-display font-bold">Today's Goals</h3>
+              <span className="text-sm text-text-muted">{goals.filter(g => g.completed).length}/{goals.length} Completed</span>
+            </div>
+            
+            <div className="space-y-3">
+              {goals.map(goal => (
+                <div 
+                  key={goal.id}
+                  onClick={() => toggleGoal(goal.id)}
+                  className={cn(
+                    "flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all",
+                    goal.completed 
+                      ? "bg-background border-border opacity-60" 
+                      : "bg-surface-hover border-border hover:border-[#D4AF3780]"
+                  )}
+                >
+                  <button className={cn(
+                    "w-6 h-6 rounded-full flex items-center justify-center transition-colors",
+                    goal.completed ? "bg-primary text-background" : "border-2 border-text-muted"
+                  )}>
+                    {goal.completed && <Check className="w-4 h-4" />}
+                  </button>
+                  
+                  <div className="flex-1">
+                    <p className={cn("font-medium transition-all", goal.completed && "line-through text-text-muted")}>
+                      {goal.title}
+                    </p>
+                  </div>
+                  
+                  <div className={cn(
+                    "px-2.5 py-1 rounded-md text-xs font-medium uppercase tracking-wider",
+                    goal.priority === 'high' ? "bg-[rgba(239,68,68,0.1)] text-danger" :
+                    goal.priority === 'medium' ? "bg-[rgba(245,158,11,0.1)] text-warning" :
+                    "bg-[rgba(34,197,94,0.1)] text-success"
+                  )}>
+                    {goal.priority}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Wellness Metrics */}
         <section className="bg-surface rounded-2xl p-6 border border-border">
