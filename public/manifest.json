@@ -1,0 +1,19 @@
+{
+  "name": "Brain Twin",
+  "short_name": "Brain Twin",
+  "description": "AI-powered productivity and wellness tracking with daily scoring, goals, and insights.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0B0B0F",
+  "theme_color": "#0B0B0F",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
