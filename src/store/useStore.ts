@@ -74,6 +74,7 @@ interface BrainTwinState {
   
   // Computed
   getCurrentScore: () => number;
+  hasCompletedToday: () => boolean;
   
   // Auth
   clearStore: () => void;
@@ -238,13 +239,20 @@ export const useStore = create<BrainTwinState>()(
         return Math.max(0, Math.round(score)); // Ensure score doesn't go below 0
       },
 
+      hasCompletedToday: () => {
+        const today = format(new Date(), 'yyyy-MM-dd');
+        return get().history.some(entry => entry.date === today);
+      },
+
       endDay: () => {
         const state = get();
         const today = format(new Date(), 'yyyy-MM-dd');
-        const score = state.getCurrentScore();
         
-        const existingEntryIndex = state.history.findIndex(h => h.date === today);
-        const isUpdate = existingEntryIndex !== -1;
+        if (state.hasCompletedToday()) {
+          return;
+        }
+
+        const score = state.getCurrentScore();
 
         const newEntry: HistoryEntry = {
           date: today,
@@ -254,14 +262,8 @@ export const useStore = create<BrainTwinState>()(
           totalGoals: state.goals.length,
         };
 
-        const newStreak = isUpdate ? state.streak : state.streak + 1;
-        const newHistory = [...state.history];
-        
-        if (isUpdate) {
-          newHistory[existingEntryIndex] = newEntry;
-        } else {
-          newHistory.push(newEntry);
-        }
+        const newStreak = state.streak + 1;
+        const newHistory = [...state.history, newEntry];
 
         set({
           history: newHistory,
@@ -270,10 +272,7 @@ export const useStore = create<BrainTwinState>()(
           metrics: INITIAL_METRICS,
         });
 
-        // Only add XP if it's a new day, or calculate difference if updating (for simplicity, we'll just add if new)
-        if (!isUpdate) {
-          state.addXp(score * 5);
-        }
+        state.addXp(score * 5);
 
         const user = auth.currentUser;
         if (user) {
@@ -285,10 +284,7 @@ export const useStore = create<BrainTwinState>()(
             createdAt: serverTimestamp()
           });
           
-          // Update streak if new
-          if (!isUpdate) {
-            batch.update(doc(db, 'users', user.uid), { streak: newStreak });
-          }
+          batch.update(doc(db, 'users', user.uid), { streak: newStreak });
           
           // Reset goals
           state.goals.forEach(g => {
@@ -306,6 +302,10 @@ export const useStore = create<BrainTwinState>()(
       },
 
       resetDay: () => {
+        if (get().hasCompletedToday()) {
+          return;
+        }
+
         set((state) => ({
           goals: state.goals.map(g => ({ ...g, completed: false })),
           metrics: INITIAL_METRICS

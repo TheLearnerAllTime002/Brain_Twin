@@ -2,8 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { auth, storage } from '../firebase';
 import { updateProfile, onAuthStateChanged, User } from 'firebase/auth';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Camera, Save, Loader2 } from 'lucide-react';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { Camera, Save, Loader2, Mail, BadgeCheck } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export function Profile() {
@@ -55,9 +55,12 @@ export function Profile() {
     setMessage('Uploading image...');
 
     try {
-      const storageRef = ref(storage, `profile_pictures/${user.uid}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const storageRef = ref(storage, `profile_pictures/${user.uid}/${Date.now()}-${sanitizedName}`);
+      const uploadResult = await uploadBytes(storageRef, file, {
+        contentType: file.type || 'application/octet-stream',
+      });
+      const url = await getDownloadURL(uploadResult.ref);
       
       await updateProfile(user, {
         photoURL: url
@@ -65,9 +68,11 @@ export function Profile() {
       
       setPhotoURL(url);
       setMessage('Profile picture updated!');
-    } catch (error) {
+      e.target.value = '';
+    } catch (error: any) {
       console.error("Error uploading image", error);
-      setMessage('Failed to upload image.');
+      const errorCode = error?.code ? ` (${error.code})` : '';
+      setMessage(`Failed to upload image${errorCode}.`);
     } finally {
       setIsSaving(false);
     }
@@ -93,72 +98,106 @@ export function Profile() {
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-2xl mx-auto space-y-8"
+      className="max-w-4xl mx-auto space-y-6"
     >
       <div>
-        <h2 className="text-3xl font-display font-bold">Profile Settings</h2>
-        <p className="text-text-muted mt-2">Manage your account and personal details.</p>
+        <h2 className="text-3xl font-display font-bold">Profile</h2>
+        <p className="text-text-muted mt-2">A compact snapshot of your Brain Twin identity.</p>
       </div>
 
-      <div className="bg-surface p-8 rounded-2xl border border-border">
-        <div className="flex flex-col items-center mb-8">
-          <div className="relative group">
-            <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-surface-hover bg-[rgba(212,175,55,0.2)] flex items-center justify-center">
-              {photoURL ? (
-                <img src={photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-              ) : (
-                <span className="text-4xl font-bold text-primary">{displayName?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}</span>
-              )}
+      <div className="relative overflow-hidden rounded-[28px] border border-border bg-surface">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.14),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.04),transparent_28%)]" />
+        <div className="relative grid gap-6 p-5 md:grid-cols-[auto_1fr] md:items-center md:p-6">
+          <div className="flex justify-center md:justify-start">
+            <div className="relative">
+              <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-[26px] border border-[rgba(212,175,55,0.28)] bg-[linear-gradient(145deg,rgba(212,175,55,0.18),rgba(255,255,255,0.03))] shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
+                {photoURL ? (
+                  <img src={photoURL} alt="Profile" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <span className="text-4xl font-bold text-primary">{displayName?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}</span>
+                )}
+              </div>
+              <button 
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute -bottom-2 -right-2 flex h-11 w-11 items-center justify-center rounded-2xl border border-[rgba(212,175,55,0.25)] bg-background text-primary shadow-lg transition-transform hover:scale-105"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+              </button>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileChange} 
+                accept="image/*" 
+                className="hidden" 
+              />
             </div>
-            <button 
-              onClick={() => fileInputRef.current?.click()}
-              className="absolute bottom-0 right-0 p-3 bg-primary text-background rounded-full shadow-lg hover:scale-110 transition-transform"
-            >
-              <Camera className="w-5 h-5" />
-            </button>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileChange} 
-              accept="image/*" 
-              className="hidden" 
-            />
           </div>
-          <p className="text-sm text-text-muted mt-4">{user.email}</p>
+
+          <div className="min-w-0 space-y-5">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="min-w-0">
+                <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(212,175,55,0.16)] bg-[rgba(212,175,55,0.08)] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.2em] text-primary">
+                  <BadgeCheck className="w-3.5 h-3.5" />
+                  Account Summary
+                </div>
+                <h3 className="mt-3 truncate text-2xl font-display font-bold text-text-main">
+                  {displayName || user.displayName || 'Set your display name'}
+                </h3>
+                <div className="mt-2 flex items-center gap-2 text-sm text-text-muted">
+                  <Mail className="w-4 h-4 flex-shrink-0" />
+                  <span className="truncate">{user.email}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 md:min-w-[220px]">
+                <div className="rounded-2xl border border-border bg-background/80 px-4 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-text-muted">Status</p>
+                  <p className="mt-2 text-sm font-semibold text-text-main">Synced</p>
+                </div>
+                <div className="rounded-2xl border border-border bg-background/80 px-4 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-text-muted">Photo</p>
+                  <p className="mt-2 text-sm font-semibold text-text-main">{photoURL ? 'Custom' : 'Initials'}</p>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleSave} className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+              <div className="space-y-2">
+                <label className="block text-xs font-medium uppercase tracking-[0.18em] text-text-muted">Display Name</label>
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-text-main transition-colors focus:border-primary focus:outline-none"
+                  placeholder="Enter your name"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-5 font-medium text-background transition-colors hover:bg-primary-hover disabled:opacity-50"
+              >
+                {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                Save
+              </button>
+            </form>
+
+            {message && (
+              <div className={cn(
+                "rounded-2xl px-4 py-3 text-sm",
+                message.includes('Failed') ? "bg-[rgba(239,68,68,0.1)] text-danger" : "bg-[rgba(34,197,94,0.1)] text-success"
+              )}>
+                {message}
+              </div>
+            )}
+
+            <p className="text-xs leading-relaxed text-text-muted">
+              Upload a square photo for the cleanest crop. Your image is stored inside your own Firebase Storage folder.
+            </p>
+          </div>
         </div>
-
-        <form onSubmit={handleSave} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-text-muted mb-2">Display Name</label>
-            <input
-              type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full bg-background border border-border rounded-xl px-4 py-3 text-text-main focus:outline-none focus:border-primary transition-colors"
-              placeholder="Enter your name"
-            />
-          </div>
-
-          {message && (
-            <div className={cn(
-              "p-4 rounded-xl text-sm",
-              message.includes('Failed') ? "bg-[rgba(239,68,68,0.1)] text-danger" : "bg-[rgba(34,197,94,0.1)] text-success"
-            )}>
-              {message}
-            </div>
-          )}
-
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="flex items-center gap-2 px-6 py-3 bg-primary text-background rounded-xl font-medium hover:bg-primary-hover transition-colors disabled:opacity-50"
-            >
-              {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-              Save Changes
-            </button>
-          </div>
-        </form>
       </div>
     </motion.div>
   );
