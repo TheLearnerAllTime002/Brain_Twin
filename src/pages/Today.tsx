@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { useStore } from '../store/useStore';
-import { Check, Circle, AlertCircle, Clock, Moon, Brain, Target, Zap, Download, Sparkles } from 'lucide-react';
+import { Check, AlertCircle, Clock, Moon, Brain, Target, Zap, Download, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import html2canvas from 'html2canvas';
 import { format } from 'date-fns';
@@ -10,36 +10,73 @@ export function Today() {
   const { goals, toggleGoal, metrics, updateMetrics, getCurrentScore, level, streak } = useStore();
   const score = getCurrentScore();
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState('');
 
   const handleDownload = async () => {
+    if (isDownloading) return;
+
     setIsDownloading(true);
-    
-    // Wait for React to render the downloading state
-    setTimeout(async () => {
+    setDownloadError('');
+
+    try {
+      // Wait for the download-only UI state to render before capture.
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
       const element = document.getElementById('daily-report-card');
       if (!element) {
-        setIsDownloading(false);
-        return;
+        throw new Error('Daily report card element not found.');
       }
-      
-      try {
-        const canvas = await html2canvas(element, { 
-          backgroundColor: '#0B0B0F',
-          scale: 3, // Higher quality for the downloaded image
-          logging: false,
-          useCORS: true
-        });
-        const url = canvas.toDataURL('image/png');
-        const link = document.createElement('a');
-        link.download = `brain-twin-report-${format(new Date(), 'yyyy-MM-dd')}.png`;
-        link.href = url;
-        link.click();
-      } catch (error) {
-        console.error("Error generating report", error);
-      } finally {
-        setIsDownloading(false);
+
+      const canvas = await html2canvas(element, {
+        backgroundColor: '#0B0B0F',
+        scale: Math.min(window.devicePixelRatio || 1, 2),
+        logging: false,
+        useCORS: true,
+        onclone: (clonedDocument) => {
+          const clonedCard = clonedDocument.getElementById('daily-report-card');
+          if (clonedCard instanceof HTMLElement) {
+            clonedCard.style.position = 'static';
+            clonedCard.style.top = 'auto';
+            clonedCard.style.transform = 'none';
+            clonedCard.style.boxShadow = '0 24px 48px rgba(0, 0, 0, 0.35)';
+          }
+
+          const style = clonedDocument.createElement('style');
+          style.textContent = `
+            *,
+            *::before,
+            *::after {
+              animation: none !important;
+              transition: none !important;
+              caret-color: transparent !important;
+            }
+          `;
+          clonedDocument.head.appendChild(style);
+        }
+      });
+
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, 'image/png');
+      });
+
+      if (!blob) {
+        throw new Error('Unable to create PNG file.');
       }
-    }, 150);
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = `brain-twin-report-${format(new Date(), 'yyyy-MM-dd')}.png`;
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error generating report", error);
+      setDownloadError('Unable to generate the PNG report on this device right now.');
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -190,7 +227,7 @@ export function Today() {
           id="daily-report-card" 
           className={cn(
             "bg-surface rounded-2xl p-6 border border-border sticky top-28 transition-all duration-300",
-            isDownloading ? "p-8 border-[#D4AF3733] shadow-2xl shadow-[rgba(212,175,55,0.1)]" : ""
+            isDownloading ? "p-8 border-[#D4AF3733] shadow-2xl" : ""
           )}
         >
           {/* Branding Header (Visible only when downloading) */}
@@ -312,6 +349,9 @@ export function Today() {
             </div>
           )}
         </section>
+        {downloadError && (
+          <p className="text-sm text-danger">{downloadError}</p>
+        )}
       </div>
     </motion.div>
   );
