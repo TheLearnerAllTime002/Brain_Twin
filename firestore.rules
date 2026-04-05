@@ -1,0 +1,158 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required, immutable)
+    //   - email: string (required, immutable)
+    //   - xp: number (required)
+    //   - level: number (required)
+    //   - streak: number (required)
+    //   - createdAt: timestamp (required, immutable)
+    //
+    // Collection: users/{userId}/goals
+    // Document ID: {goalId}
+    // Fields:
+    //   - title: string (required, max 100 chars)
+    //   - priority: string (required, enum: low, medium, high)
+    //   - category: string (required, enum: health, study, work, personal)
+    //   - completed: boolean (required)
+    //   - createdAt: timestamp (required, immutable)
+    //
+    // Collection: users/{userId}/metrics
+    // Document ID: today
+    // Fields:
+    //   - screenTime: number (required, 0-24)
+    //   - sleep: number (required, 0-24)
+    //   - procrastination: number (required, 0-10)
+    //   - focus: number (required, 0-10)
+    //   - hadDistractions: boolean (required)
+    //   - notes: string (required, max 500 chars)
+    //   - updatedAt: timestamp (required)
+    //
+    // Collection: users/{userId}/history
+    // Document ID: {historyId}
+    // Fields:
+    //   - date: string (required, YYYY-MM-DD)
+    //   - score: number (required)
+    //   - metrics: map (required)
+    //   - goalsCompleted: number (required)
+    //   - totalGoals: number (required)
+    //   - createdAt: timestamp (required, immutable)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function isImmutable(field) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([field]);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUserProfile() {
+      let data = request.resource.data;
+      return hasOnlyAllowedFields(['uid', 'email', 'xp', 'level', 'streak', 'createdAt']) &&
+             hasRequiredFields(['uid', 'email', 'xp', 'level', 'streak', 'createdAt']) &&
+             data.uid is string && data.uid == request.auth.uid &&
+             data.email is string && data.email.size() > 0 && data.email.size() < 100 &&
+             data.xp is number && data.xp >= 0 &&
+             data.level is number && data.level >= 1 &&
+             data.streak is number && data.streak >= 0 &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidGoal() {
+      let data = request.resource.data;
+      return hasOnlyAllowedFields(['title', 'priority', 'category', 'completed', 'createdAt']) &&
+             hasRequiredFields(['title', 'priority', 'category', 'completed', 'createdAt']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
+             data.priority in ['low', 'medium', 'high'] &&
+             data.category in ['health', 'study', 'work', 'personal'] &&
+             data.completed is bool &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidDailyMetrics() {
+      let data = request.resource.data;
+      return hasOnlyAllowedFields(['screenTime', 'sleep', 'procrastination', 'focus', 'hadDistractions', 'notes', 'updatedAt']) &&
+             hasRequiredFields(['screenTime', 'sleep', 'procrastination', 'focus', 'hadDistractions', 'notes', 'updatedAt']) &&
+             data.screenTime is number && data.screenTime >= 0 && data.screenTime <= 24 &&
+             data.sleep is number && data.sleep >= 0 && data.sleep <= 24 &&
+             data.procrastination is number && data.procrastination >= 0 && data.procrastination <= 10 &&
+             data.focus is number && data.focus >= 0 && data.focus <= 10 &&
+             data.hadDistractions is bool &&
+             data.notes is string && data.notes.size() <= 500 &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidHistoryEntry() {
+      let data = request.resource.data;
+      return hasOnlyAllowedFields(['date', 'score', 'metrics', 'goalsCompleted', 'totalGoals', 'createdAt']) &&
+             hasRequiredFields(['date', 'score', 'metrics', 'goalsCompleted', 'totalGoals', 'createdAt']) &&
+             data.date is string && data.date.size() == 10 &&
+             data.score is number && data.score >= 0 &&
+             data.metrics is map &&
+             data.goalsCompleted is number && data.goalsCompleted >= 0 &&
+             data.totalGoals is number && data.totalGoals >= 0 &&
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUserProfile();
+      allow update: if isOwner(userId) && isValidUserProfile() && isImmutable('uid') && isImmutable('email') && isImmutable('createdAt');
+      allow delete: if isOwner(userId);
+
+      match /goals/{goalId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidGoal();
+        allow update: if isOwner(userId) && isValidGoal() && isImmutable('createdAt');
+        allow delete: if isOwner(userId);
+      }
+
+      match /metrics/{metricId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidDailyMetrics();
+        allow update: if isOwner(userId) && isValidDailyMetrics();
+        allow delete: if isOwner(userId);
+      }
+
+      match /history/{historyId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidHistoryEntry();
+        allow update: if isOwner(userId) && isValidHistoryEntry() && isImmutable('createdAt');
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}

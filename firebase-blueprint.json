@@ -1,0 +1,88 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile and overall progress",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "User ID" },
+        "email": { "type": "string", "description": "User email" },
+        "xp": { "type": "number", "description": "Total XP" },
+        "level": { "type": "number", "description": "Current Level" },
+        "streak": { "type": "number", "description": "Current Streak" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "xp", "level", "streak", "createdAt"]
+    },
+    "Goal": {
+      "title": "Goal",
+      "description": "A user's daily goal",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "category": { "type": "string", "enum": ["health", "study", "work", "personal"] },
+        "completed": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "priority", "category", "completed", "createdAt"]
+    },
+    "DailyMetrics": {
+      "title": "DailyMetrics",
+      "description": "User's wellness metrics for the day",
+      "type": "object",
+      "properties": {
+        "screenTime": { "type": "number" },
+        "sleep": { "type": "number" },
+        "procrastination": { "type": "number" },
+        "focus": { "type": "number" },
+        "hadDistractions": { "type": "boolean" },
+        "notes": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["screenTime", "sleep", "procrastination", "focus", "hadDistractions", "notes", "updatedAt"]
+    },
+    "HistoryEntry": {
+      "title": "HistoryEntry",
+      "description": "A completed day's scorecard",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string" },
+        "score": { "type": "number" },
+        "metrics": {
+          "type": "object",
+          "properties": {
+            "screenTime": { "type": "number" },
+            "sleep": { "type": "number" },
+            "procrastination": { "type": "number" },
+            "focus": { "type": "number" },
+            "hadDistractions": { "type": "boolean" },
+            "notes": { "type": "string" }
+          }
+        },
+        "goalsCompleted": { "type": "number" },
+        "totalGoals": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["date", "score", "metrics", "goalsCompleted", "totalGoals", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles"
+    },
+    "/users/{userId}/goals/{goalId}": {
+      "schema": "Goal",
+      "description": "User's goals"
+    },
+    "/users/{userId}/metrics/today": {
+      "schema": "DailyMetrics",
+      "description": "User's current daily metrics"
+    },
+    "/users/{userId}/history/{historyId}": {
+      "schema": "HistoryEntry",
+      "description": "User's past scorecards"
+    }
+  }
+}
