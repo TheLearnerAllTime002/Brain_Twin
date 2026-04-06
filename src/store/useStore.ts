@@ -47,11 +47,36 @@ export interface Badge {
 
 export interface Team {
   id: string;
+  code: string;
   name: string;
   createdBy: string;
   members: string[];
   createdAt: any;
 }
+
+const getTodayKey = () => format(new Date(), 'yyyy-MM-dd');
+const generateTeamCode = () => Math.random().toString(36).slice(2, 8).toUpperCase();
+
+const calculateScore = (goals: Goal[], metrics: DailyMetrics) => {
+  const goalsCompleted = goals.filter(g => g.completed).length;
+
+  let score = 0;
+  score += goalsCompleted * 10;
+  score += metrics.focus * 2;
+  score -= metrics.procrastination * 2;
+
+  if (metrics.screenTime > 4) {
+    score -= (metrics.screenTime - 4) * 2;
+  }
+
+  if (metrics.sleep >= 7 && metrics.sleep <= 9) {
+    score += 10;
+  } else if (metrics.sleep < 5) {
+    score -= 5;
+  }
+
+  return Math.max(0, Math.round(score));
+};
 
 interface BrainTwinState {
   // Goals
@@ -69,11 +94,12 @@ interface BrainTwinState {
   xp: number;
   level: number;
   streak: number;
+  activeDate: string;
   addXp: (amount: number) => void;
 
   // History
   history: HistoryEntry[];
-  endDay: () => void;
+  endDay: () => Promise<void>;
   resetDay: () => void;
 
   // Rewards
@@ -93,6 +119,7 @@ interface BrainTwinState {
   // Computed
   getCurrentScore: () => number;
   hasCompletedToday: () => boolean;
+  ensureCurrentDay: () => Promise<void>;
   
   // Auth
   clearStore: () => void;
@@ -124,6 +151,7 @@ export const useStore = create<BrainTwinState>()(
       xp: 0,
       level: 1,
       streak: 0,
+      activeDate: getTodayKey(),
       history: [],
       badges: MOCK_BADGES,
       teams: [],
@@ -136,6 +164,7 @@ export const useStore = create<BrainTwinState>()(
         xp: 0,
         level: 1,
         streak: 0,
+        activeDate: getTodayKey(),
         history: [],
         teams: [],
         currentTeam: null,
@@ -241,36 +270,78 @@ export const useStore = create<BrainTwinState>()(
 
       getCurrentScore: () => {
         const { goals, metrics } = get();
-        const goalsCompleted = goals.filter(g => g.completed).length;
-        
-        let score = 0;
-        score += goalsCompleted * 10;
-        score += metrics.focus * 2;
-        score -= metrics.procrastination * 2;
-        
-        // Screen time penalty (penalty starts after 4 hours)
-        if (metrics.screenTime > 4) {
-          score -= (metrics.screenTime - 4) * 2;
-        }
-        
-        // Sleep bonus (bonus for 7-9 hours)
-        if (metrics.sleep >= 7 && metrics.sleep <= 9) {
-          score += 10;
-        } else if (metrics.sleep < 5) {
-          score -= 5;
-        }
-
-        return Math.max(0, Math.round(score)); // Ensure score doesn't go below 0
+        return calculateScore(goals, metrics);
       },
 
       hasCompletedToday: () => {
-        const today = format(new Date(), 'yyyy-MM-dd');
+        const today = getTodayKey();
         return get().history.some(entry => entry.date === today);
       },
 
-      endDay: () => {
+      ensureCurrentDay: async () => {
         const state = get();
-        const today = format(new Date(), 'yyyy-MM-dd');
+        const today = getTodayKey();
+        const activeDate = state.activeDate || today;
+
+        if (activeDate === today) {
+          return;
+        }
+
+        const alreadyArchived = state.history.some(entry => entry.date === activeDate);
+        const goalsCompleted = state.goals.filter(g => g.completed).length;
+        const score = calculateScore(state.goals, state.metrics);
+        const archivedEntry: HistoryEntry = {
+          date: activeDate,
+          score,
+          metrics: { ...state.metrics },
+          goalsCompleted,
+          totalGoals: state.goals.length,
+        };
+
+        set((currentState) => ({
+          activeDate: today,
+          history: alreadyArchived ? currentState.history : [...currentState.history, archivedEntry],
+          streak: alreadyArchived ? currentState.streak : currentState.streak + 1,
+          goals: currentState.goals.map(goal => ({ ...goal, completed: false })),
+          metrics: INITIAL_METRICS,
+        }));
+
+        if (!alreadyArchived) {
+          get().addXp(score * 5);
+        }
+
+        const user = auth.currentUser;
+        if (user) {
+          const batch = writeBatch(db);
+
+          if (!alreadyArchived) {
+            batch.set(doc(db, 'users', user.uid, 'history', activeDate), {
+              ...archivedEntry,
+              createdAt: serverTimestamp()
+            });
+          }
+
+          batch.set(doc(db, 'users', user.uid), {
+            activeDate: today,
+            ...(alreadyArchived ? {} : { streak: get().streak })
+          }, { merge: true });
+
+          state.goals.forEach(goal => {
+            batch.set(doc(db, 'users', user.uid, 'goals', goal.id), { completed: false }, { merge: true });
+          });
+
+          batch.set(doc(db, 'users', user.uid, 'metrics', 'today'), {
+            ...INITIAL_METRICS,
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+
+          await batch.commit();
+        }
+      },
+
+      endDay: async () => {
+        const state = get();
+        const today = getTodayKey();
         
         if (state.hasCompletedToday()) {
           return;
@@ -309,6 +380,7 @@ export const useStore = create<BrainTwinState>()(
           });
           
           batch.set(doc(db, 'users', user.uid), { streak: newStreak }, { merge: true });
+          batch.set(doc(db, 'users', user.uid), { activeDate: today }, { merge: true });
           
           // Reset goals
           state.goals.forEach(g => {
@@ -321,7 +393,7 @@ export const useStore = create<BrainTwinState>()(
             updatedAt: serverTimestamp()
           });
           
-          batch.commit().catch(console.error);
+          await batch.commit().catch(console.error);
         }
       },
 
@@ -371,7 +443,11 @@ export const useStore = create<BrainTwinState>()(
             myTeamIds.add(doc.id);
           });
 
-          set({ teams: teamsList, myTeams: Array.from(myTeamIds) });
+          const profileSnap = await getDoc(doc(db, 'users', user.uid, 'profile'));
+          const currentTeamId = profileSnap.exists() ? profileSnap.data().currentTeamId : null;
+          const currentTeam = teamsList.find((team) => team.id === currentTeamId) ?? teamsList[0] ?? null;
+
+          set({ teams: teamsList, myTeams: Array.from(myTeamIds), currentTeam });
         } catch (error) {
           console.error('Failed to fetch teams:', error);
         }
@@ -383,10 +459,12 @@ export const useStore = create<BrainTwinState>()(
 
         try {
           const teamId = Math.random().toString(36).substr(2, 9) + Date.now();
+          const teamCode = generateTeamCode();
           const batch = writeBatch(db);
 
           // Create team
           batch.set(doc(db, 'teams', teamId), {
+            code: teamCode,
             name,
             createdBy: user.uid,
             members: [user.uid],
@@ -412,12 +490,14 @@ export const useStore = create<BrainTwinState>()(
         if (!user) return;
 
         try {
-          // Find team by code (code == teamId for simplicity)
-          const teamRef = doc(db, 'teams', code);
-          const teamSnap = await getDoc(teamRef);
-          if (!teamSnap.exists()) throw new Error('Invalid team code');
+          const normalizedCode = code.trim().toUpperCase();
+          const teamQuery = query(collection(db, 'teams'), where('code', '==', normalizedCode));
+          const teamSnapshot = await getDocs(teamQuery);
+          if (teamSnapshot.empty) throw new Error('Invalid team code');
 
-          const teamData = teamSnap.data() as any;
+          const teamDoc = teamSnapshot.docs[0];
+          const teamRef = teamDoc.ref;
+          const teamData = teamDoc.data() as Team;
           if (teamData.members.includes(user.uid)) {
             throw new Error('Already a member');
           }
@@ -425,8 +505,8 @@ export const useStore = create<BrainTwinState>()(
           const batch = writeBatch(db);
           batch.update(teamRef, { members: arrayUnion(user.uid) });
           batch.set(doc(db, 'users', user.uid, 'profile'), {
-            teams: arrayUnion(code),
-            ...(teamData.createdBy !== user.uid && { currentTeamId: code })
+            teams: arrayUnion(teamDoc.id),
+            ...(teamData.createdBy !== user.uid && { currentTeamId: teamDoc.id })
           }, { merge: true });
 
           await batch.commit();

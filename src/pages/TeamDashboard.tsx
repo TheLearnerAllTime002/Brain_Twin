@@ -4,7 +4,6 @@ import { motion } from 'motion/react';
 import { useStore, Team } from '../store/useStore';
 import { Users, Crown, ArrowLeft, Share2, TrendingUp } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { generateTeamCode } from '../firebase';
 
 export function TeamDashboard() {
   const { teamId } = useParams<{ teamId: string }>();
@@ -30,7 +29,7 @@ export function TeamDashboard() {
     );
   }
 
-  const code = generateTeamCode(team.id);
+  const code = team.code;
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">

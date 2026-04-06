@@ -43,7 +43,3 @@ export const logOut = async () => {
   }
 };
 
-// Team helpers (store handles direct CRUD)
-export const generateTeamCode = (teamId: string) => teamId.toUpperCase();
-
-

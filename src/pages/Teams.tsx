@@ -10,9 +10,10 @@ export function Teams() {
   const [newTeamName, setNewTeamName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [codeInput, setCodeInput] = useState('');
+  const [joinError, setJoinError] = useState('');
 
   useEffect(() => {
-    fetchTeams();
+    fetchTeams().catch(console.error);
   }, [fetchTeams]);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -33,10 +34,20 @@ export function Teams() {
     e.preventDefault();
     if (!codeInput.trim()) return;
     try {
+      setJoinError('');
       await useStore.getState().joinTeam(codeInput);
       setCodeInput('');
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      setJoinError(error?.message || 'Failed to join team');
+    }
+  };
+
+  const handleCopyCode = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+    } catch (error) {
+      console.error('Failed to copy team code', error);
     }
   };
 
@@ -104,6 +115,9 @@ export function Teams() {
             >
               Join Team
             </button>
+            {joinError && (
+              <p className="text-sm text-danger text-center">{joinError}</p>
+            )}
           </form>
         </motion.section>
       </div>
@@ -129,8 +143,8 @@ export function Teams() {
                 </div>
                 <p className="text-text-muted text-sm mb-4">{team.members.length} members</p>
                 <div className="flex items-center gap-2 text-xs bg-background px-3 py-1 rounded-full">
-                  Code: <span className="font-mono font-bold text-primary">{team.id.slice(-6).toUpperCase()}</span>
-                  <button className="ml-1 p-1 hover:bg-primary text-primary-hover rounded-full">
+                  Code: <span className="font-mono font-bold text-primary">{team.code}</span>
+                  <button type="button" className="ml-1 p-1 hover:bg-primary text-primary-hover rounded-full" onClick={() => handleCopyCode(team.code)}>
                     <Copy className="w-3 h-3" />
                   </button>
                 </div>
