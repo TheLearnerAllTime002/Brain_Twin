@@ -12,6 +12,50 @@ interface Message {
   text: string;
 }
 
+function formatInline(text: string) {
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index} className="font-semibold text-text-main">{part.slice(2, -2)}</strong>;
+    }
+
+    return <React.Fragment key={index}>{part}</React.Fragment>;
+  });
+}
+
+function renderModelMessage(text: string) {
+  const blocks = text
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  return (
+    <div className="space-y-3">
+      {blocks.map((block, blockIndex) => {
+        const lines = block.split('\n').map((line) => line.trim()).filter(Boolean);
+        const isList = lines.every((line) => /^[-*]\s+/.test(line) || /^\d+\.\s+/.test(line));
+
+        if (isList) {
+          return (
+            <ul key={blockIndex} className="space-y-1 pl-4 list-disc">
+              {lines.map((line, lineIndex) => (
+                <li key={lineIndex}>{formatInline(line.replace(/^[-*]\s+/, '').replace(/^\d+\.\s+/, ''))}</li>
+              ))}
+            </ul>
+          );
+        }
+
+        return (
+          <p key={blockIndex} className="whitespace-pre-wrap leading-relaxed">
+            {formatInline(block)}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 export function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -139,7 +183,9 @@ export function Chatbot() {
                       ? "bg-primary text-background rounded-tr-none" 
                       : "bg-surface-hover text-text-main rounded-tl-none"
                   )}>
-                    {msg.text}
+                    {msg.role === 'model' ? renderModelMessage(msg.text) : (
+                      <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
+                    )}
                   </div>
                 </div>
               ))}

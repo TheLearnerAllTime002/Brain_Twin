@@ -11,6 +11,8 @@ export function Teams() {
   const [isCreating, setIsCreating] = useState(false);
   const [codeInput, setCodeInput] = useState('');
   const [joinError, setJoinError] = useState('');
+  const [createError, setCreateError] = useState('');
+  const [copiedCode, setCopiedCode] = useState('');
 
   useEffect(() => {
     fetchTeams().catch(console.error);
@@ -21,10 +23,12 @@ export function Teams() {
     if (!newTeamName.trim()) return;
     setIsCreating(true);
     try {
+      setCreateError('');
       await createTeam(newTeamName);
       setNewTeamName('');
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      setCreateError(error?.message || 'Failed to create team');
     } finally {
       setIsCreating(false);
     }
@@ -46,6 +50,8 @@ export function Teams() {
   const handleCopyCode = async (code: string) => {
     try {
       await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      window.setTimeout(() => setCopiedCode(''), 1500);
     } catch (error) {
       console.error('Failed to copy team code', error);
     }
@@ -84,6 +90,9 @@ export function Teams() {
             >
               {isCreating ? 'Creating...' : 'Create & Join'}
             </button>
+            {createError && (
+              <p className="text-sm text-danger text-center">{createError}</p>
+            )}
           </form>
         </motion.section>
 
@@ -148,6 +157,9 @@ export function Teams() {
                     <Copy className="w-3 h-3" />
                   </button>
                 </div>
+                {copiedCode === team.code && (
+                  <p className="mt-2 text-xs text-success">Code copied</p>
+                )}
               </motion.div>
             ))}
           </div>

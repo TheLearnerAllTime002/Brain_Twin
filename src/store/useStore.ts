@@ -56,6 +56,7 @@ export interface Team {
 
 const getTodayKey = () => format(new Date(), 'yyyy-MM-dd');
 const generateTeamCode = () => Math.random().toString(36).slice(2, 8).toUpperCase();
+const getFallbackTeamCode = (teamId: string) => teamId.slice(-6).toUpperCase();
 
 const calculateScore = (goals: Goal[], metrics: DailyMetrics) => {
   const goalsCompleted = goals.filter(g => g.completed).length;
@@ -302,7 +303,7 @@ export const useStore = create<BrainTwinState>()(
           activeDate: today,
           history: alreadyArchived ? currentState.history : [...currentState.history, archivedEntry],
           streak: alreadyArchived ? currentState.streak : currentState.streak + 1,
-          goals: currentState.goals.map(goal => ({ ...goal, completed: false })),
+          goals: [],
           metrics: INITIAL_METRICS,
         }));
 
@@ -327,7 +328,7 @@ export const useStore = create<BrainTwinState>()(
           }, { merge: true });
 
           state.goals.forEach(goal => {
-            batch.set(doc(db, 'users', user.uid, 'goals', goal.id), { completed: false }, { merge: true });
+            batch.delete(doc(db, 'users', user.uid, 'goals', goal.id));
           });
 
           batch.set(doc(db, 'users', user.uid, 'metrics', 'today'), {
@@ -363,7 +364,7 @@ export const useStore = create<BrainTwinState>()(
         set({
           history: newHistory,
           streak: newStreak,
-          goals: state.goals.map(g => ({ ...g, completed: false })),
+          goals: [],
           metrics: INITIAL_METRICS,
         });
 
@@ -384,7 +385,7 @@ export const useStore = create<BrainTwinState>()(
           
           // Reset goals
           state.goals.forEach(g => {
-            batch.set(doc(db, 'users', user.uid, 'goals', g.id), { completed: false }, { merge: true });
+            batch.delete(doc(db, 'users', user.uid, 'goals', g.id));
           });
           
           // Reset metrics
@@ -439,7 +440,7 @@ export const useStore = create<BrainTwinState>()(
 
           myTeamsSnapshot.forEach((doc) => {
             const teamData = doc.data();
-            teamsList.push({ id: doc.id, ...teamData } as Team);
+            teamsList.push({ id: doc.id, code: teamData.code || getFallbackTeamCode(doc.id), ...teamData } as Team);
             myTeamIds.add(doc.id);
           });
 
@@ -482,6 +483,7 @@ export const useStore = create<BrainTwinState>()(
           await get().fetchTeams(); // Refresh
         } catch (error) {
           console.error('Failed to create team:', error);
+          throw error;
         }
       },
 
@@ -493,11 +495,20 @@ export const useStore = create<BrainTwinState>()(
           const normalizedCode = code.trim().toUpperCase();
           const teamQuery = query(collection(db, 'teams'), where('code', '==', normalizedCode));
           const teamSnapshot = await getDocs(teamQuery);
-          if (teamSnapshot.empty) throw new Error('Invalid team code');
+          let teamDoc = teamSnapshot.docs[0];
 
-          const teamDoc = teamSnapshot.docs[0];
+          if (!teamDoc) {
+            const legacyTeamRef = doc(db, 'teams', normalizedCode);
+            const legacyTeamSnap = await getDoc(legacyTeamRef);
+            if (legacyTeamSnap.exists()) {
+              teamDoc = legacyTeamSnap;
+            }
+          }
+
+          if (!teamDoc) throw new Error('Invalid team code');
+
           const teamRef = teamDoc.ref;
-          const teamData = teamDoc.data() as Team;
+          const teamData = { code: getFallbackTeamCode(teamDoc.id), ...teamDoc.data() } as Team;
           if (teamData.members.includes(user.uid)) {
             throw new Error('Already a member');
           }
