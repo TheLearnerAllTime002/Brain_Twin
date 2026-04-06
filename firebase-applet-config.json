@@ -3,6 +3,7 @@
   "appId": "1:1069370697309:web:73fb1892bf42a54cc54fb4",
   "apiKey": "AIzaSyC2hpmzldqNQpevWPrrbvS7Ce_VfgWdc2o",
   "authDomain": "sage-inquiry-459813-m6.firebaseapp.com",
+  "databaseURL": "https://sage-inquiry-459813-m6-default-rtdb.firebaseio.com",
   "firestoreDatabaseId": "ai-studio-2622ebff-24c6-4671-8085-e078a3c9f5c3",
   "storageBucket": "sage-inquiry-459813-m6.firebasestorage.app",
   "messagingSenderId": "1069370697309",

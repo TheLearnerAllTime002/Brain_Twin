@@ -8,22 +8,29 @@ import { Insights } from './pages/Insights';
 import { Profile } from './pages/Profile';
 import { Login } from './pages/Login';
 import { FirebaseSync } from './components/FirebaseSync';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from './firebase';
 import { Loader2 } from 'lucide-react';
+const Teams = lazy(() => import('./pages/Teams').then((module) => ({ default: module.Teams })));
+const TeamDashboard = lazy(() => import('./pages/TeamDashboard').then((module) => ({ default: module.TeamDashboard })));
+import { useStore } from './store/useStore';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const fetchTeams = useStore((state) => state.fetchTeams);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        fetchTeams().catch(console.error);
+      }
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [fetchTeams]);
 
   if (loading) {
     return (
@@ -48,6 +55,16 @@ export default function App() {
           <Route path="rewards" element={<Rewards />} />
           <Route path="insights" element={<Insights />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="teams" element={
+            <Suspense fallback={<Loader2 className="animate-spin mx-auto" />}>
+              <Teams />
+            </Suspense>
+          } />
+          <Route path="teams/:teamId" element={
+            <Suspense fallback={<Loader2 className="animate-spin mx-auto" />}>
+              <TeamDashboard />
+            </Suspense>
+          } />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

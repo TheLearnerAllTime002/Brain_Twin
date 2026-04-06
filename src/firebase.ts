@@ -42,3 +42,8 @@ export const logOut = async () => {
     console.error("Error signing out", error);
   }
 };
+
+// Team helpers (store handles direct CRUD)
+export const generateTeamCode = (teamId: string) => teamId.toUpperCase();
+
+

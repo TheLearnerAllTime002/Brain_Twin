@@ -1,4 +1,8 @@
 rules_version = '2';
+
+  // Team Mode Extensions
+  // teams/{teamId}: {name, createdBy (owner uid), createdAt, members: [uids]}
+  // users/{userId}/profile: {currentTeamId?, teams: [teamIds], createdAt?}
 service cloud.firestore {
   match /databases/{database}/documents {
     
@@ -123,6 +127,34 @@ service cloud.firestore {
              data.createdAt is timestamp;
     }
 
+    // Team Mode Validators
+    function isValidTeam() {
+      let data = request.resource.data;
+      return hasOnlyAllowedFields(['name', 'createdBy', 'createdAt', 'members']) &&
+             hasRequiredFields(['name', 'createdBy', 'createdAt', 'members']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 50 &&
+             data.createdBy is string &&
+             data.createdAt is timestamp &&
+             data.members is list && data.members.all(m => m is string) && data.members.size() >= 1;
+    }
+
+    function isValidProfile() {
+      let data = request.resource.data;
+      return hasOnlyAllowedFields(['currentTeamId', 'teams', 'createdAt']) &&
+             data.currentTeamId == null || data.currentTeamId is string &&
+             (data.teams == null || (data.teams is list && data.teams.all(t => t is string))) &&
+             (data.createdAt == null || data.createdAt is timestamp);
+    }
+
+    function isTeamMember(teamId) {
+      return resource.data.members.hasAny([request.auth.uid]) ||
+             resource.data.createdBy == request.auth.uid;
+    }
+
+    function isTeamOwner(teamId) {
+      return resource.data.createdBy == request.auth.uid;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -131,7 +163,11 @@ service cloud.firestore {
       allow read: if isOwner(userId);
       allow create: if isOwner(userId) && isValidUserProfile();
       allow update: if isOwner(userId) && isValidUserProfile() && isImmutable('uid') && isImmutable('email') && isImmutable('createdAt');
-      allow delete: if isOwner(userId);
+
+      // Team Profile
+      match /profile {
+        allow read, write: if isOwner(userId) && isValidProfile();
+      }
 
       match /goals/{goalId} {
         allow read: if isOwner(userId);
@@ -153,6 +189,19 @@ service cloud.firestore {
         allow update: if isOwner(userId) && isValidHistoryEntry() && isImmutable('createdAt');
         allow delete: if isOwner(userId);
       }
+    }
+
+    // Teams Collection
+    match /teams/{teamId} {
+      allow read: if isAuthenticated() && isTeamMember(teamId);
+      allow create: if isAuthenticated() && isValidTeam() && resource == null;
+      allow update: if isAuthenticated() && isValidTeam() && isTeamOwner(teamId);
+      allow delete: if isAuthenticated() && isTeamOwner(teamId);
+
+      // List own teams (index on createdBy/members)
+      allow list: if isAuthenticated() &&
+        (resource.data.createdBy == request.auth.uid ||
+         exists(/databases/$(database)/documents/teams/$(teamId)) && isTeamMember(teamId));
     }
   }
 }

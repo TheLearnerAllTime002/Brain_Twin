@@ -4,9 +4,7 @@ import { MessageSquare, X, Send, Bot, User } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import { cn } from '../lib/utils';
 
-// Initialize Gemini API
 const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : '');
-const ai = new GoogleGenAI({ apiKey });
 
 interface Message {
   id: string;
@@ -27,13 +25,23 @@ export function Chatbot() {
   const chatRef = useRef<any>(null);
 
   useEffect(() => {
-    // Initialize chat with system instructions
-    chatRef.current = ai.chats.create({
-      model: 'gemini-3.1-flash-lite-preview',
-      config: {
-        systemInstruction: "You are Brain Twin, an AI productivity and wellness coach. You help users optimize their daily goals, focus, sleep, and screen time. You are encouraging, analytical, and concise. Keep your answers brief and actionable.",
-      }
-    });
+    if (!apiKey) {
+      chatRef.current = null;
+      return;
+    }
+
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      chatRef.current = ai.chats.create({
+        model: 'gemini-3.1-flash-lite-preview',
+        config: {
+          systemInstruction: "You are Brain Twin, an AI productivity and wellness coach. You help users optimize their daily goals, focus, sleep, and screen time. You are encouraging, analytical, and concise. Keep your answers brief and actionable.",
+        }
+      });
+    } catch (error) {
+      console.error('Failed to initialize Gemini chat', error);
+      chatRef.current = null;
+    }
   }, []);
 
   const scrollToBottom = () => {
@@ -54,6 +62,10 @@ export function Chatbot() {
     setIsLoading(true);
 
     try {
+      if (!chatRef.current) {
+        throw new Error('Gemini chat is not configured');
+      }
+
       const response = await chatRef.current.sendMessage({ message: userMessage });
       setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', text: response.text }]);
     } catch (error) {
@@ -153,12 +165,12 @@ export function Chatbot() {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask about your productivity..."
+                  placeholder={apiKey ? "Ask about your productivity..." : "Gemini API key missing"}
                   className="w-full bg-background border border-border rounded-xl pl-4 pr-12 py-3 text-sm text-text-main focus:outline-none focus:border-primary transition-colors"
                 />
                 <button 
                   type="submit"
-                  disabled={!input.trim() || isLoading}
+                  disabled={!apiKey || !input.trim() || isLoading}
                   className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-primary hover:text-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <Send className="w-4 h-4" />
