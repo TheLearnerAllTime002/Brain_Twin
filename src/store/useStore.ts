@@ -57,6 +57,7 @@ export interface Team {
 const getTodayKey = () => format(new Date(), 'yyyy-MM-dd');
 const generateTeamCode = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 const getFallbackTeamCode = (teamId: string) => teamId.slice(-6).toUpperCase();
+const userProfileRef = (userId: string) => doc(db, 'users', userId, 'meta', 'profile');
 
 const calculateScore = (goals: Goal[], metrics: DailyMetrics) => {
   const goalsCompleted = goals.filter(g => g.completed).length;
@@ -444,7 +445,7 @@ export const useStore = create<BrainTwinState>()(
             myTeamIds.add(doc.id);
           });
 
-          const profileSnap = await getDoc(doc(db, 'users', user.uid, 'profile'));
+          const profileSnap = await getDoc(userProfileRef(user.uid));
           const currentTeamId = profileSnap.exists() ? profileSnap.data().currentTeamId : null;
           const currentTeam = teamsList.find((team) => team.id === currentTeamId) ?? teamsList[0] ?? null;
 
@@ -473,7 +474,7 @@ export const useStore = create<BrainTwinState>()(
           });
 
           // Update user profile
-          batch.set(doc(db, 'users', user.uid, 'profile'), {
+          batch.set(userProfileRef(user.uid), {
             teams: arrayUnion(teamId),
             currentTeamId: teamId,
             createdAt: serverTimestamp()
@@ -515,7 +516,7 @@ export const useStore = create<BrainTwinState>()(
 
           const batch = writeBatch(db);
           batch.update(teamRef, { members: arrayUnion(user.uid) });
-          batch.set(doc(db, 'users', user.uid, 'profile'), {
+          batch.set(userProfileRef(user.uid), {
             teams: arrayUnion(teamDoc.id),
             ...(teamData.createdBy !== user.uid && { currentTeamId: teamDoc.id })
           }, { merge: true });
@@ -537,7 +538,7 @@ export const useStore = create<BrainTwinState>()(
           const teamRef = doc(db, 'teams', teamId);
           batch.update(teamRef, { members: arrayRemove(user.uid) });
 
-          const profileRef = doc(db, 'users', user.uid, 'profile');
+          const profileRef = userProfileRef(user.uid);
           batch.update(profileRef, { 
             teams: arrayRemove(teamId),
             ...(get().currentTeam?.id === teamId && { currentTeamId: null })
@@ -559,7 +560,7 @@ export const useStore = create<BrainTwinState>()(
 
         set({ currentTeam: team });
         if (user) {
-          updateDoc(doc(db, 'users', user.uid, 'profile'), { currentTeamId: teamId });
+          updateDoc(userProfileRef(user.uid), { currentTeamId: teamId });
         }
       },
     }),
