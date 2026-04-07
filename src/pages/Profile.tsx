@@ -3,10 +3,8 @@ import { motion } from 'motion/react';
 import { auth, storage } from '../firebase';
 import { updateProfile, onAuthStateChanged, User } from 'firebase/auth';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { Camera, Save, Loader2, Mail, BadgeCheck, Users, ArrowRight } from 'lucide-react';
+import { Camera, Save, Loader2, Mail, BadgeCheck } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { Link } from 'react-router-dom';
-import { useStore } from '../store/useStore';
 
 export function Profile() {
   const [user, setUser] = useState<User | null>(null);
@@ -16,9 +14,6 @@ export function Profile() {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const store = useStore();
-  const currentTeam = store.currentTeam;
-  const myTeams = store.myTeams;
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -31,10 +26,6 @@ export function Profile() {
     });
     return () => unsubscribe();
   }, []);
-
-  useEffect(() => {
-    store.fetchTeams().catch(console.error);
-  }, [store]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -205,57 +196,6 @@ export function Profile() {
             <p className="text-xs leading-relaxed text-text-muted">
               Upload a square photo for the cleanest crop. Your image is stored inside your own Firebase Storage folder.
             </p>
-
-            {/* Teams Section */}
-            <section className="space-y-4 pt-8 border-t border-border">
-              <h3 className="text-xl font-display font-bold flex items-center gap-2">
-                <Users className="w-6 h-6" />
-                Teams
-              </h3>
-              <div className="space-y-3">
-                {myTeams.length === 0 ? (
-                    <div className="text-center py-8 bg-background rounded-2xl border-2 border-dashed border-border">
-                      <Users className="w-12 h-12 text-text-muted mx-auto mb-4" />
-                      <p className="text-text-muted mb-4">No teams yet</p>
-                      <Link to="/teams" className="inline-flex items-center gap-2 bg-primary text-background px-6 py-3 rounded-xl font-medium hover:bg-primary-hover">
-                        Create or Join Team
-                        <ArrowRight className="w-4 h-4" />
-                      </Link>
-                    </div>
-                ) : (
-                  <div>
-                    {currentTeam && (
-                      <div className="bg-gradient-to-r from-primary/5 to-warning/5 p-6 rounded-2xl border border-primary/20 mb-4">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center">
-                            <Users className="w-5 h-5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-bold text-lg">{currentTeam.name}</p>
-                            <p className="text-sm text-text-muted">{currentTeam.members.length} members</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2 text-xs">
-                          <Link to={`/teams/${currentTeam.id}`} className="flex-1 bg-primary text-background py-2 px-4 rounded-lg text-center font-medium">
-                            View Dashboard
-                          </Link>
-                          <button
-                            type="button"
-                            className="flex-1 border border-border py-2 px-4 rounded-lg hover:bg-surface text-text-muted"
-                            onClick={() => store.leaveTeam(currentTeam.id)}
-                          >
-                            Leave
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    <Link to="/teams" className="w-full block bg-background border border-border py-4 px-6 rounded-2xl text-center font-medium hover:border-primary transition-colors">
-                      Manage Teams ({myTeams.length})
-                    </Link>
-                  </div>
-                )}
-              </div>
-            </section>
           </div>
         </div>
       </div>

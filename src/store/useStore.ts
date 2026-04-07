@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { format } from 'date-fns';
 import { auth, db } from '../firebase';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch, collection, query, where, getDocs, onSnapshot, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 
 export type Priority = 'low' | 'medium' | 'high';
 export type Category = 'health' | 'study' | 'work' | 'personal';
@@ -45,19 +45,7 @@ export interface Badge {
   unlockedAt?: string;
 }
 
-export interface Team {
-  id: string;
-  code: string;
-  name: string;
-  createdBy: string;
-  members: string[];
-  createdAt: any;
-}
-
 const getTodayKey = () => format(new Date(), 'yyyy-MM-dd');
-const generateTeamCode = () => Math.random().toString(36).slice(2, 8).toUpperCase();
-const getFallbackTeamCode = (teamId: string) => teamId.slice(-6).toUpperCase();
-const userProfileRef = (userId: string) => doc(db, 'users', userId, 'meta', 'profile');
 
 const calculateScore = (goals: Goal[], metrics: DailyMetrics) => {
   const goalsCompleted = goals.filter(g => g.completed).length;
@@ -107,16 +95,6 @@ interface BrainTwinState {
   // Rewards
   badges: Badge[];
   unlockBadge: (id: string) => void;
-
-  // Teams
-  teams: Team[];
-  currentTeam: Team | null;
-  myTeams: string[];
-  fetchTeams: () => Promise<void>;
-  createTeam: (name: string) => Promise<void>;
-  joinTeam: (code: string) => Promise<void>;
-  leaveTeam: (teamId: string) => Promise<void>;
-  setCurrentTeam: (teamId: string | null) => void;
   
   // Computed
   getCurrentScore: () => number;
@@ -156,9 +134,6 @@ export const useStore = create<BrainTwinState>()(
       activeDate: getTodayKey(),
       history: [],
       badges: MOCK_BADGES,
-      teams: [],
-      currentTeam: null,
-      myTeams: [],
 
       clearStore: () => set({
         goals: [],
@@ -168,9 +143,6 @@ export const useStore = create<BrainTwinState>()(
         streak: 0,
         activeDate: getTodayKey(),
         history: [],
-        teams: [],
-        currentTeam: null,
-        myTeams: [],
       }),
 
       addGoal: (goal) => {
@@ -426,143 +398,6 @@ export const useStore = create<BrainTwinState>()(
       unlockBadge: (id) => set((state) => ({
         badges: state.badges.map(b => b.id === id ? { ...b, unlocked: true, unlockedAt: format(new Date(), 'yyyy-MM-dd') } : b)
       })),
-
-      // Team Actions
-      fetchTeams: async () => {
-        const user = auth.currentUser;
-        if (!user) return;
-
-        try {
-          // My teams as member/owner
-          const myTeamsQuery = query(collection(db, 'teams'), where('members', 'array-contains', user.uid));
-          const myTeamsSnapshot = await getDocs(myTeamsQuery);
-          const teamsList: Team[] = [];
-          const myTeamIds = new Set<string>();
-
-          myTeamsSnapshot.forEach((doc) => {
-            const teamData = doc.data();
-            teamsList.push({ id: doc.id, code: teamData.code || getFallbackTeamCode(doc.id), ...teamData } as Team);
-            myTeamIds.add(doc.id);
-          });
-
-          const profileSnap = await getDoc(userProfileRef(user.uid));
-          const currentTeamId = profileSnap.exists() ? profileSnap.data().currentTeamId : null;
-          const currentTeam = teamsList.find((team) => team.id === currentTeamId) ?? teamsList[0] ?? null;
-
-          set({ teams: teamsList, myTeams: Array.from(myTeamIds), currentTeam });
-        } catch (error) {
-          console.error('Failed to fetch teams:', error);
-        }
-      },
-
-      createTeam: async (name: string) => {
-        const user = auth.currentUser;
-        if (!user) return;
-
-        try {
-          const teamId = Math.random().toString(36).substr(2, 9) + Date.now();
-          const teamCode = generateTeamCode();
-          const batch = writeBatch(db);
-
-          // Create team
-          batch.set(doc(db, 'teams', teamId), {
-            code: teamCode,
-            name,
-            createdBy: user.uid,
-            members: [user.uid],
-            createdAt: serverTimestamp()
-          });
-
-          // Update user profile
-          batch.set(userProfileRef(user.uid), {
-            teams: arrayUnion(teamId),
-            currentTeamId: teamId,
-            createdAt: serverTimestamp()
-          }, { merge: true });
-
-          await batch.commit();
-          await get().fetchTeams(); // Refresh
-        } catch (error) {
-          console.error('Failed to create team:', error);
-          throw error;
-        }
-      },
-
-      joinTeam: async (code: string) => {
-        const user = auth.currentUser;
-        if (!user) return;
-
-        try {
-          const normalizedCode = code.trim().toUpperCase();
-          const teamQuery = query(collection(db, 'teams'), where('code', '==', normalizedCode));
-          const teamSnapshot = await getDocs(teamQuery);
-          let teamDoc = teamSnapshot.docs[0];
-
-          if (!teamDoc) {
-            const legacyTeamRef = doc(db, 'teams', normalizedCode);
-            const legacyTeamSnap = await getDoc(legacyTeamRef);
-            if (legacyTeamSnap.exists()) {
-              teamDoc = legacyTeamSnap;
-            }
-          }
-
-          if (!teamDoc) throw new Error('Invalid team code');
-
-          const teamRef = teamDoc.ref;
-          const teamData = { code: getFallbackTeamCode(teamDoc.id), ...teamDoc.data() } as Team;
-          if (teamData.members.includes(user.uid)) {
-            throw new Error('Already a member');
-          }
-
-          const batch = writeBatch(db);
-          batch.update(teamRef, { members: arrayUnion(user.uid) });
-          batch.set(userProfileRef(user.uid), {
-            teams: arrayUnion(teamDoc.id),
-            ...(teamData.createdBy !== user.uid && { currentTeamId: teamDoc.id })
-          }, { merge: true });
-
-          await batch.commit();
-          await get().fetchTeams();
-        } catch (error) {
-          console.error('Failed to join team:', error);
-          throw error;
-        }
-      },
-
-      leaveTeam: async (teamId: string) => {
-        const user = auth.currentUser;
-        if (!user) return;
-
-        try {
-          const batch = writeBatch(db);
-          const teamRef = doc(db, 'teams', teamId);
-          batch.update(teamRef, { members: arrayRemove(user.uid) });
-
-          const profileRef = userProfileRef(user.uid);
-          batch.update(profileRef, { 
-            teams: arrayRemove(teamId),
-            ...(get().currentTeam?.id === teamId && { currentTeamId: null })
-          });
-
-          await batch.commit();
-          await get().fetchTeams();
-        } catch (error) {
-          console.error('Failed to leave team:', error);
-        }
-      },
-
-      setCurrentTeam: (teamId) => {
-        const user = auth.currentUser;
-        if (!user || !teamId) return;
-
-        const team = get().teams.find(t => t.id === teamId);
-        if (!team) return;
-
-        set({ currentTeam: team });
-        if (user) {
-          updateDoc(userProfileRef(user.uid), { currentTeamId: teamId });
-        }
-      },
     }),
     {
       name: 'brain-twin-storage',

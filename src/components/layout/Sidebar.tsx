@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Target, History, Trophy, Lightbulb, Users, LogOut, LogIn, Flame, X, Loader2 } from 'lucide-react';
+import { LayoutDashboard, Target, History, Trophy, Lightbulb, LogOut, LogIn, Flame, X, Loader2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useStore } from '../../store/useStore';
 import { auth, signInWithGoogle, logOut } from '../../firebase';
@@ -12,7 +12,6 @@ const NAV_ITEMS = [
   { name: 'History', path: '/history', icon: History },
   { name: 'Rewards', path: '/rewards', icon: Trophy },
   { name: 'Insights', path: '/insights', icon: Lightbulb },
-  { name: 'Teams', path: '/teams', icon: Users },
 ];
 
 export function Sidebar({ onClose }: { onClose?: () => void }) {
@@ -137,4 +136,3 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
     </aside>
   );
 }
-
