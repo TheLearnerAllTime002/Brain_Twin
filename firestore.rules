@@ -14,6 +14,7 @@ service cloud.firestore {
     //   - xp: number (required)
     //   - level: number (required)
     //   - streak: number (required)
+    //   - activeDate: string (required, YYYY-MM-DD)
     //   - createdAt: timestamp (required, immutable)
     //
     // Collection: users/{userId}/goals
@@ -77,13 +78,14 @@ service cloud.firestore {
 
     function isValidUserProfile() {
       let data = request.resource.data;
-      return hasOnlyAllowedFields(['uid', 'email', 'xp', 'level', 'streak', 'createdAt']) &&
-             hasRequiredFields(['uid', 'email', 'xp', 'level', 'streak', 'createdAt']) &&
+      return hasOnlyAllowedFields(['uid', 'email', 'xp', 'level', 'streak', 'activeDate', 'createdAt']) &&
+             hasRequiredFields(['uid', 'email', 'xp', 'level', 'streak', 'activeDate', 'createdAt']) &&
              data.uid is string && data.uid == request.auth.uid &&
              data.email is string && data.email.size() > 0 && data.email.size() < 100 &&
              data.xp is number && data.xp >= 0 &&
              data.level is number && data.level >= 1 &&
              data.streak is number && data.streak >= 0 &&
+             data.activeDate is string && data.activeDate.size() == 10 &&
              data.createdAt is timestamp;
     }
 

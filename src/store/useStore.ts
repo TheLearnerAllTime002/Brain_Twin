@@ -114,6 +114,10 @@ const INITIAL_METRICS: DailyMetrics = {
   notes: '',
 };
 
+const createInitialMetrics = (): DailyMetrics => ({
+  ...INITIAL_METRICS,
+});
+
 const MOCK_BADGES: Badge[] = [
   { id: 'b1', title: 'Early Bird', description: 'Log in before 7 AM', icon: 'Sun', unlocked: true, unlockedAt: '2026-04-01' },
   { id: 'b2', title: 'Focus Master', description: 'Achieve a focus score of 10', icon: 'Target', unlocked: false },
@@ -127,7 +131,7 @@ export const useStore = create<BrainTwinState>()(
   persist(
     (set, get) => ({
       goals: [],
-      metrics: INITIAL_METRICS,
+      metrics: createInitialMetrics(),
       xp: 0,
       level: 1,
       streak: 0,
@@ -137,7 +141,7 @@ export const useStore = create<BrainTwinState>()(
 
       clearStore: () => set({
         goals: [],
-        metrics: INITIAL_METRICS,
+        metrics: createInitialMetrics(),
         xp: 0,
         level: 1,
         streak: 0,
@@ -277,7 +281,7 @@ export const useStore = create<BrainTwinState>()(
           history: alreadyArchived ? currentState.history : [...currentState.history, archivedEntry],
           streak: alreadyArchived ? currentState.streak : currentState.streak + 1,
           goals: [],
-          metrics: INITIAL_METRICS,
+          metrics: createInitialMetrics(),
         }));
 
         if (!alreadyArchived) {
@@ -335,10 +339,11 @@ export const useStore = create<BrainTwinState>()(
         const newHistory = [...state.history, newEntry];
 
         set({
+          activeDate: today,
           history: newHistory,
           streak: newStreak,
           goals: [],
-          metrics: INITIAL_METRICS,
+          metrics: createInitialMetrics(),
         });
 
         state.addXp(score * 5);
@@ -353,8 +358,10 @@ export const useStore = create<BrainTwinState>()(
             createdAt: serverTimestamp()
           });
           
-          batch.set(doc(db, 'users', user.uid), { streak: newStreak }, { merge: true });
-          batch.set(doc(db, 'users', user.uid), { activeDate: today }, { merge: true });
+          batch.set(doc(db, 'users', user.uid), {
+            streak: newStreak,
+            activeDate: today,
+          }, { merge: true });
           
           // Reset goals
           state.goals.forEach(g => {
@@ -378,7 +385,7 @@ export const useStore = create<BrainTwinState>()(
 
         set((state) => ({
           goals: state.goals.map(g => ({ ...g, completed: false })),
-          metrics: INITIAL_METRICS
+          metrics: createInitialMetrics()
         }));
         
         const user = auth.currentUser;
