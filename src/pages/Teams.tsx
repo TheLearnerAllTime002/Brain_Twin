@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { useStore } from '../store/useStore';
-import { Plus, Users, Search, Copy, Users2 } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { Users, Search, Copy, Users2 } from 'lucide-react';
 import { X } from 'lucide-react';
 
 export function Teams() {
@@ -20,11 +19,13 @@ export function Teams() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTeamName.trim()) return;
+    const teamName = newTeamName.trim();
+    if (!teamName) return;
+
     setIsCreating(true);
     try {
       setCreateError('');
-      await createTeam(newTeamName);
+      await createTeam(teamName);
       setNewTeamName('');
     } catch (error: any) {
       console.error(error);
@@ -74,7 +75,8 @@ export function Teams() {
           className="bg-surface rounded-2xl p-8 border border-border"
         >
           <Users className="w-12 h-12 text-primary mx-auto mb-6 p-3 bg-[rgba(212,175,55,0.1)] rounded-2xl" />
-          <h3 className="text-2xl font-display font-bold text-center mb-4">Create Team</h3>
+          <h3 className="text-2xl font-display font-bold text-center mb-2">Create a Team</h3>
+          <p className="text-text-muted text-center mb-6 text-sm">Start a team and invite others with a shareable code.</p>
           <form onSubmit={handleCreate} className="space-y-4">
             <input
               type="text"
